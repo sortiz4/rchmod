@@ -1,0 +1,5 @@
+[package]
+name = "chmodrt"
+version = "1.0.0"
+license = "MIT License"
+authors = ["sortiz4 <sortiz832@gmail.com>"]
