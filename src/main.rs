@@ -11,8 +11,10 @@ use std::process::Command;
 
 // Successful execution
 const ESUCCESS: i32 = 0x00;
-// Usage error
-const EUSAGE: i32 = 0x01;
+// No exit code found
+const ENOEXIT: i32 = 0x01;
+// Invalid usage
+const EUSAGE: i32 = 0x02;
 
 // Shell arguments (compatibility wrapper)
 const SHELL_ARGS: &'static [&'static str] = &[
@@ -108,7 +110,7 @@ fn chmodrt(args: Vec<String>) -> i32 {
 
     // Return the child exit code if it exists
     match child.code() {
-        None => return ESUCCESS,
+        None => return ENOEXIT,
         Some(code) => return code,
     }
 }
