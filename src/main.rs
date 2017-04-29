@@ -18,20 +18,20 @@ const ENOEXIT: i32 = 0x01;
 const EUSAGE: i32 = 0x02;
 
 // Shell arguments (compatibility wrapper)
-const SHELL_ARGS: &'static [&'static str] = &[
+const SHELL_ARGS: &[&str] = &[
     "sh", "-c"
 ];
 // Chmod arguments (recursive typed chmod)
-const CHMOD_ARGS: &'static [&'static str] = &[
+const CHMOD_ARGS: &[&str] = &[
     "find", "-type", "-exec", "chmod", "{}", "\\;"
 ];
 
 // The program name
-const NAME: &'static str = "chmodrt";
+const NAME: &str = "chmodrt";
 // The program usage
-const USAGE: &'static str = "Usage: chmodrt TYPE MODE PATH";
+const USAGE: &str = "Usage: chmodrt TYPE MODE PATH";
 // The program options
-const TYPES: &'static [&'static [&'static str]] = &[
+const TYPES: &[&[&str]] = &[
     &["-d", "Change the mode of directories"],
     &["-f", "Change the mode of files"],
 ];
@@ -76,7 +76,7 @@ fn chmodrt(args: Vec<String>) -> i32 {
     if Path::new(&args[3]).has_root() {
         let stdin_err = format_sys!("cannot read from stdin");
         loop {
-            // The input buffer must be reset with every pass
+            // Reset the input buffer with every pass
             let mut input = String::new();
 
             // Print a confirmation prompt and wait for input
@@ -88,9 +88,7 @@ fn chmodrt(args: Vec<String>) -> i32 {
 
             // The response must be 'y' or 'n'
             match input.as_str() {
-                "y" => {
-                    break;
-                },
+                "y" => break,
                 "n" => {
                     sysln!("abort").unwrap();
                     return ESUCCESS;
