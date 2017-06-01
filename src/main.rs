@@ -5,7 +5,6 @@
 use std::env;
 use std::fmt::Write as FmtWrite;
 use std::io;
-use std::io::Write as IoWrite;
 use std::path::Path;
 use std::process;
 use std::process::Command;
@@ -36,22 +35,40 @@ const TYPES: &[&[&str]] = &[
     &["-f", "Change the mode of files"],
 ];
 
+macro_rules! eprint {
+    ($fmt:expr) => {{
+        use std::io::{self, Write};
+        write!(&mut io::stderr(), $fmt).unwrap();
+    }};
+    ($fmt:expr, $($arg:tt)*) => {{
+        use std::io::{self, Write};
+        write!(&mut io::stderr(), $fmt, $($arg)*).unwrap();
+    }};
+}
+
+macro_rules! eprintln {
+    () => (eprint!("\n"));
+    ($fmt:expr) => (eprint!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (eprint!(concat!($fmt, "\n"), $($arg)*));
+}
+
 // Prepends the program name to the given message
-macro_rules! format_sys {
+macro_rules! sformat {
     ($fmt:expr) => (format!(concat!("{}: ", $fmt), NAME));
     ($fmt:expr, $($arg:tt)*) => (format!(concat!("{}: ", $fmt), NAME, $($arg)*));
 }
 
 // Writes a formatted system message to the standard error
-macro_rules! sys {
-    ($fmt:expr) => (write!(&mut ::std::io::stderr(), "{}", format_sys!($fmt)));
-    ($fmt:expr, $($arg:tt)*) => (write!(&mut ::std::io::stderr(), "{}", format_sys!($fmt, $($arg)*)));
+macro_rules! sprint {
+    ($fmt:expr) => (eprint!("{}", sformat!($fmt)));
+    ($fmt:expr, $($arg:tt)*) => (eprint!("{}", sformat!($fmt, $($arg)*)));
 }
 
 // Writes a formatted system message to the standard error with a new line
-macro_rules! sysln {
-    ($fmt:expr) => (sys!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (sys!(concat!($fmt, "\n"), $($arg)*));
+macro_rules! sprintln {
+    () => (sprint!("\n"));
+    ($fmt:expr) => (sprint!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (sprint!(concat!($fmt, "\n"), $($arg)*));
 }
 
 fn main() {
@@ -68,19 +85,19 @@ fn chmodrt(args: Vec<String>) -> i32 {
 
     // Check if the type is not a directory or a file
     if args[1] == TYPES[0][0] || args[1] == TYPES[1][0] {} else {
-        sysln!("unknown type: '{}'", args[1]).unwrap();
+        sprintln!("unknown type: '{}'", args[1]);
         return EUSAGE;
     }
 
     // Authorize absolute paths
     if Path::new(&args[3]).has_root() {
-        let stdin_err = format_sys!("cannot read from stdin");
+        let stdin_err = sformat!("cannot read from stdin");
         loop {
             // Reset the input buffer with every pass
             let mut input = String::new();
 
             // Print a confirmation prompt and wait for input
-            sys!("path is absolute - continue? [y/n] ").unwrap();
+            sprint!("path is absolute - continue? [y/n] ");
             io::stdin().read_line(&mut input).expect(&stdin_err);
 
             // Normalize the input for comparison
@@ -90,7 +107,7 @@ fn chmodrt(args: Vec<String>) -> i32 {
             match input.as_str() {
                 "y" => break,
                 "n" => {
-                    sysln!("abort").unwrap();
+                    sprintln!("abort");
                     return ESUCCESS;
                 },
                 _ => continue,
@@ -102,8 +119,8 @@ fn chmodrt(args: Vec<String>) -> i32 {
     let find_command = format!("{} {} {} {} {} {} {} {} {}",
                                CHMOD_ARGS[0], args[3], CHMOD_ARGS[1], args[1].trim_left_matches("-"),
                                CHMOD_ARGS[2], CHMOD_ARGS[3], args[2], CHMOD_ARGS[4], CHMOD_ARGS[5]);
-    let child_exec_err = format_sys!("failed to execute the child process: `{}`", SHELL_ARGS[0]);
-    let child_wait_err = format_sys!("failed to wait on the child process: `{}`", SHELL_ARGS[0]);
+    let child_exec_err = sformat!("failed to execute the child process: `{}`", SHELL_ARGS[0]);
+    let child_wait_err = sformat!("failed to wait on the child process: `{}`", SHELL_ARGS[0]);
 
     // Execute and wait on the child process
     let child = Command::new(SHELL_ARGS[0])
