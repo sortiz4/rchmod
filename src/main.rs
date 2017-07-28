@@ -35,23 +35,6 @@ const TYPES: &[&[&str]] = &[
     &["-f", "Change the mode of files"],
 ];
 
-macro_rules! eprint {
-    ($fmt:expr) => {{
-        use std::io::{self, Write};
-        write!(&mut io::stderr(), $fmt).unwrap();
-    }};
-    ($fmt:expr, $($arg:tt)*) => {{
-        use std::io::{self, Write};
-        write!(&mut io::stderr(), $fmt, $($arg)*).unwrap();
-    }};
-}
-
-macro_rules! eprintln {
-    () => (eprint!("\n"));
-    ($fmt:expr) => (eprint!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (eprint!(concat!($fmt, "\n"), $($arg)*));
-}
-
 // Prepends the program name to the given message
 macro_rules! sformat {
     ($fmt:expr) => (format!(concat!("{}: ", $fmt), NAME));
