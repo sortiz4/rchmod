@@ -36,15 +36,15 @@ const TYPES: &[&[&str]] = &[
 ];
 
 // Prepends the program name to the given message
-macro_rules! sformat {
+macro_rules! formats {
     ($fmt:expr) => (format!(concat!("{}: ", $fmt), NAME));
     ($fmt:expr, $($arg:tt)*) => (format!(concat!("{}: ", $fmt), NAME, $($arg)*));
 }
 
 // Writes a formatted system message to the standard error
 macro_rules! sprint {
-    ($fmt:expr) => (eprint!("{}", sformat!($fmt)));
-    ($fmt:expr, $($arg:tt)*) => (eprint!("{}", sformat!($fmt, $($arg)*)));
+    ($fmt:expr) => (eprint!("{}", formats!($fmt)));
+    ($fmt:expr, $($arg:tt)*) => (eprint!("{}", formats!($fmt, $($arg)*)));
 }
 
 // Writes a formatted system message to the standard error with a new line
@@ -74,7 +74,7 @@ fn chmodrt(args: Vec<String>) -> i32 {
 
     // Authorize absolute paths
     if Path::new(&args[3]).has_root() {
-        let stdin_err = sformat!("cannot read from stdin");
+        let stdin_err = formats!("cannot read from stdin");
         loop {
             // Reset the input buffer with every pass
             let mut input = String::new();
@@ -102,8 +102,8 @@ fn chmodrt(args: Vec<String>) -> i32 {
     let find_command = format!("{} {} {} {} {} {} {} {} {}",
                                CHMOD_ARGS[0], args[3], CHMOD_ARGS[1], args[1].trim_left_matches("-"),
                                CHMOD_ARGS[2], CHMOD_ARGS[3], args[2], CHMOD_ARGS[4], CHMOD_ARGS[5]);
-    let child_exec_err = sformat!("failed to execute the child process: `{}`", SHELL_ARGS[0]);
-    let child_wait_err = sformat!("failed to wait on the child process: `{}`", SHELL_ARGS[0]);
+    let child_exec_err = formats!("failed to execute the child process: `{}`", SHELL_ARGS[0]);
+    let child_wait_err = formats!("failed to wait on the child process: `{}`", SHELL_ARGS[0]);
 
     // Execute and wait on the child process
     let child = Command::new(SHELL_ARGS[0])
