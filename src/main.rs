@@ -59,7 +59,6 @@ fn main() {
 }
 
 fn chmodrt(args: Vec<String>) -> i32 {
-
     // Enforce correct usage
     if args.len() != 4 {
         print!("{}\n\n{}", USAGE, options());
@@ -75,15 +74,11 @@ fn chmodrt(args: Vec<String>) -> i32 {
     // Authorize absolute paths
     if Path::new(&args[3]).has_root() {
         let stdin_err = formats!("cannot read from stdin");
+        let mut input = String::new();
         loop {
-            // Reset the input buffer with every pass
-            let mut input = String::new();
-
-            // Print a confirmation prompt and wait for input
+            // Prompt the user and normalize the input
             sprint!("path is absolute - continue? [y/n] ");
             io::stdin().read_line(&mut input).expect(&stdin_err);
-
-            // Normalize the input for comparison
             input = input.trim().to_lowercase();
 
             // The response must be 'y' or 'n'
@@ -93,7 +88,10 @@ fn chmodrt(args: Vec<String>) -> i32 {
                     sprintln!("abort");
                     return ESUCCESS;
                 },
-                _ => continue,
+                _ => {
+                    input.clear();
+                    continue;
+                },
             }
         }
     }
@@ -120,7 +118,6 @@ fn chmodrt(args: Vec<String>) -> i32 {
 }
 
 fn options() -> String {
-
     // Initialize the buffer and write the options header
     let mut buffer = String::with_capacity(128);
     writeln!(&mut buffer, "Types:").unwrap();
