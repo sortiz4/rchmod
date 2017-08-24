@@ -1,5 +1,12 @@
 [package]
 name = "chmodrt"
-version = "1.0.0"
+version = "2.0.0"
 license = "MIT License"
 authors = ["sortiz4 <sortiz832@gmail.com>"]
+
+[[bin]]
+name = "chmodrt"
+doc = false
+
+[dependencies]
+getopts = "0.2.14"

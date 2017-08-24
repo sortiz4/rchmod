@@ -1,15 +1,27 @@
 # Chmodrt
-A simple program that recursively changes the mode of all directories or files
-to the given mode under the given directory. The following child process will
-be executed and waited on, and it's exit code returned
-`sh -c "find PATH -type TYPE -exec chmod MODE {} \;"`.
+Chmodrt is a simple utility that recursively changes the mode of directories or
+files and is only compatible with Unix systems. Numeric modes must be an octal
+between one and four digits. Symbolic modes are not supported.
 
 #### Usage
 
 ```
-Usage: chmodrt TYPE MODE PATH
+Recursively change the mode of files or directories.
 
-Types:
-  -d  Change the mode of directories
-  -f  Change the mode of files
+Usage:
+    chmodrt [OPTIONS] TYPE MODE PATHS
+
+Options:
+    -d, --dir           Change the mode of directories
+    -D, --dry-run       Do not change any files (verbose)
+    -f, --file          Change the mode of files
+    -h, --help          Output this message
+    -i, --interactive   Prompt before changing each file
+    -s, --suppress      Suppress all interaction
+    -v, --verbose       Explain what's being done
+    -V, --version       Output version information
 ```
+
+### Script
+The previous version is available as a shell script, `chmodrt.sh`, and is
+compatible with Windows through Cygwin and other similar distributions.

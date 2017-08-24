@@ -1,133 +1,105 @@
-//! A simple program that recursively changes the mode of all directories or
-//! files to the given mode under the given directory. The following child
-//! process will be executed and waited on, and it's exit code returned
-//! `sh -c "find PATH -type TYPE -exec chmod MODE {} \;"`.
+#[macro_use]
+extern crate chmodrt;
 use std::env;
-use std::fmt::Write as FmtWrite;
-use std::io;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process;
-use std::process::Command;
-
-// Successful execution
-const ESUCCESS: i32 = 0x00;
-// No exit code found
-const ENOEXIT: i32 = 0x01;
-// Invalid usage
-const EUSAGE: i32 = 0x02;
-
-// Shell arguments (compatibility wrapper)
-const SHELL_ARGS: &[&str] = &[
-    "sh", "-c"
-];
-// Chmod arguments (recursive typed chmod)
-const CHMOD_ARGS: &[&str] = &[
-    "find", "-type", "-exec", "chmod", "{}", "\\;"
-];
-
-// The program name
-const NAME: &str = "chmodrt";
-// The program usage
-const USAGE: &str = "Usage: chmodrt TYPE MODE PATH";
-// The program options
-const TYPES: &[&[&str]] = &[
-    &["-d", "Change the mode of directories"],
-    &["-f", "Change the mode of files"],
-];
-
-// Prepends the program name to the given message
-macro_rules! formats {
-    ($fmt:expr) => (format!(concat!("{}: ", $fmt), NAME));
-    ($fmt:expr, $($arg:tt)*) => (format!(concat!("{}: ", $fmt), NAME, $($arg)*));
-}
-
-// Writes a formatted system message to the standard error
-macro_rules! sprint {
-    ($fmt:expr) => (eprint!("{}", formats!($fmt)));
-    ($fmt:expr, $($arg:tt)*) => (eprint!("{}", formats!($fmt, $($arg)*)));
-}
-
-// Writes a formatted system message to the standard error with a new line
-macro_rules! sprintln {
-    () => (sprint!("\n"));
-    ($fmt:expr) => (sprint!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (sprint!(concat!($fmt, "\n"), $($arg)*));
-}
+use chmodrt::core;
+use chmodrt::core::Auth;
+use chmodrt::opts;
+use chmodrt::status;
+use chmodrt::text;
 
 fn main() {
     process::exit(chmodrt(env::args().collect()));
 }
 
 fn chmodrt(args: Vec<String>) -> i32 {
-    // Enforce correct usage
-    if args.len() != 4 {
-        print!("{}\n\n{}", USAGE, options());
-        return EUSAGE;
+    // Parse the command line options
+    let options = opts::create();
+    let matches = match opts::parse(&args, &options) {
+        Ok(val) => val,
+        Err(err) => {
+            sprintln!("{}", err);
+            return status::EUSAGE;
+        },
+    };
+
+    // Display the help message or version and exit (optional)
+    if matches.opt_present(opts::HELP.short) {
+        print!("{}", options.usage(text::USAGE));
+        return status::ESUCCESS;
+    } else if matches.opt_present(opts::VERSION.short) {
+        println!("{} {}", text::NAME, text::VERSION);
+        return status::ESUCCESS;
     }
 
-    // Check if the type is not a directory or a file
-    if args[1] == TYPES[0][0] || args[1] == TYPES[1][0] {} else {
-        sprintln!("unknown type: '{}'", args[1]);
-        return EUSAGE;
+    // Validate the options
+    if let Err(err) = opts::validate(&matches) {
+        sprintln!("{}", err);
+        return status::EUSAGE;
     }
 
-    // Authorize absolute paths
-    if Path::new(&args[3]).has_root() {
-        let stdin_err = formats!("cannot read from stdin");
-        let mut input = String::new();
-        loop {
-            // Prompt the user and normalize the input
-            sprint!("path is absolute - continue? [y/n] ");
-            io::stdin().read_line(&mut input).expect(&stdin_err);
-            input = input.trim().to_lowercase();
+    // Parse the mode string
+    let mode = match parse_mode(&matches.free[0]) {
+        Ok(val) => val,
+        Err(_) => {
+            sprintln!("{}: {}", matches.free[0], status::MNUMERIC);
+            return status::EUSAGE;
+        }
+    };
 
-            // The response must be 'y' or 'n'
-            match input.as_str() {
-                "y" => break,
-                "n" => {
-                    sprintln!("abort");
-                    return ESUCCESS;
-                },
-                _ => {
-                    input.clear();
-                    continue;
-                },
+    // Loop through the free arguments (paths)
+    let mut list: Vec<PathBuf> = Vec::new();
+    for item in matches.free[1..].iter() {
+        let path = Path::new(item);
+
+        // Authorize absolute paths (optional)
+        if !matches.opt_present(opts::SUPPRESS.short) && path.has_root() {
+            if let false = core::auth(&path, Auth::Absolute) {
+                continue;
             }
         }
+
+        // Verify that the path exists in the file system
+        if path.exists() {
+            // Attempt to collect directories or files (type option)
+            if matches.opt_present(opts::DIR.short) && path.is_dir() {
+                if let Err(err) = core::collect_dirs(&path, &mut list) {
+                    sprintln!("{} '{}': {}", status::MACCESS, item, err);
+                    continue;
+                }
+            } else if matches.opt_present(opts::FILE.short) {
+                // Collect all files under the given directories
+                if path.is_dir() {
+                    if let Err(err) = core::collect_files(&path, &mut list) {
+                        sprintln!("{} '{}': {}", status::MACCESS, item, err);
+                        continue;
+                    }
+                } else if path.is_file() {
+                    list.push(path.to_owned());
+                }
+            }
+        } else {
+            sprintln!("'{}' {}", item, status::MNOTFOUND);
+        }
+
+        // Change the mode of each path in the list
+        if list.len() > 0 {
+            core::chmod_many(mode, &list, &matches);
+            list.clear(); // Truncate the list
+        }
     }
-
-    // Construct the child process and error messages
-    let find_command = format!("{} {} {} {} {} {} {} {} {}",
-                               CHMOD_ARGS[0], args[3], CHMOD_ARGS[1], args[1].trim_left_matches("-"),
-                               CHMOD_ARGS[2], CHMOD_ARGS[3], args[2], CHMOD_ARGS[4], CHMOD_ARGS[5]);
-    let child_exec_err = formats!("failed to execute the child process: `{}`", SHELL_ARGS[0]);
-    let child_wait_err = formats!("failed to wait on the child process: `{}`", SHELL_ARGS[0]);
-
-    // Execute and wait on the child process
-    let child = Command::new(SHELL_ARGS[0])
-        .arg(SHELL_ARGS[1])
-        .arg(find_command)
-        .spawn().expect(&child_exec_err)
-        .wait().expect(&child_wait_err);
-
-    // Return the child exit code if it exists
-    match child.code() {
-        None => return ENOEXIT,
-        Some(code) => return code,
-    }
+    return status::ESUCCESS;
 }
 
-fn options() -> String {
-    // Initialize the buffer and write the options header
-    let mut buffer = String::with_capacity(128);
-    writeln!(&mut buffer, "Types:").unwrap();
-
-    // Enumerate the options and return the buffer
-    for outer in TYPES.iter() {
-        for inner in outer.iter() {
-            write!(&mut buffer, "{:2}{}", "", inner).unwrap();
-        }
-        writeln!(&mut buffer, "").unwrap();
+fn parse_mode(arg: &str) -> Result<u32, ()> {
+    if arg.len() > 4 {
+        return Err(());
     }
-    return buffer;
+    let mode = match u32::from_str_radix(arg, 8) {
+        Ok(val) => val,
+        Err(_) => return Err(()),
+    };
+    return Ok(mode);
 }
