@@ -24,5 +24,5 @@ for path in "${@:3}"; do
 done
 
 # Evaluate the type and execute
-type=`printf -- $1 | sed "s/-//g"`
+type=`printf -- "$1" | sed "s/-//g"`
 find ${@:3} -type $type -exec chmod $2 {} \;
