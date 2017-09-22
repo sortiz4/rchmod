@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 name="chmodrt"
 
 # Validate the arguments (count only)
