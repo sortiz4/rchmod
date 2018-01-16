@@ -1,4 +1,4 @@
 *.lock
 *.log
-.idea
-target
+/.idea
+/target
