@@ -9,4 +9,4 @@ name = "chmodrt"
 doc = false
 
 [dependencies]
-getopts = "0.2.14"
+getopts = "0.2.15"

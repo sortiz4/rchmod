@@ -70,7 +70,7 @@ macro_rules! optflags {
 }
 
 /// Reformats the `getopts` error message.
-macro_rules! reopt {
+macro_rules! reformat {
     ($var:expr) => ($var.to_string().to_lowercase().trim_right_matches(".").to_owned());
 }
 
@@ -91,7 +91,7 @@ pub fn create() -> Options {
 pub fn parse(args: &Vec<String>, options: &Options) -> Result<Matches, String> {
     let matches = match options.parse(&args[1..]) {
         Ok(val) => val,
-        Err(err) => return Err(help!("{}", reopt!(err))),
+        Err(err) => return Err(help!("{}", reformat!(err))),
     };
     return Ok(matches);
 }
