@@ -24,4 +24,4 @@ Options:
 
 ## Script
 The previous version is available as a shell script, `chmodrt.sh`, and is
-compatible with Windows through Cygwin and Unix-like environments.
+compatible with Windows through Cygwin and other Unix-like environments.
