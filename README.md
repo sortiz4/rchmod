@@ -4,22 +4,16 @@ files and is only compatible with Unix systems. Numeric modes must be an octal
 between one and four digits. Symbolic modes are not supported.
 
 ## Usage
+Changing files requires the `-f` option.
 
 ```
-Recursively change the mode of files or directories.
+$ chmodrt -f MODE [PATHS]
+```
 
-Usage:
-    chmodrt [OPTIONS] TYPE MODE PATHS
+Changing directories requires the `-d` option.
 
-Options:
-    -d, --dir           Change the mode of directories
-    -D, --dry-run       Do not change any files (verbose)
-    -f, --file          Change the mode of files
-    -h, --help          Output this message
-    -i, --interactive   Prompt before changing each file
-    -s, --suppress      Suppress all interaction
-    -v, --verbose       Explain what's being done
-    -V, --version       Output version information
+```
+$ chmodrt -d MODE [PATHS]
 ```
 
 ## Script

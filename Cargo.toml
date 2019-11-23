@@ -1,12 +1,16 @@
 [package]
 name = "chmodrt"
-version = "2.0.0"
+edition = "2018"
+version = "3.0.0"
 license = "MIT License"
-authors = ["sortiz4 <sortiz832@gmail.com>"]
+authors = ["Steven Ortiz"]
+
+[lib]
+doc = false
 
 [[bin]]
 name = "chmodrt"
 doc = false
 
 [dependencies]
-getopts = "0.2.15"
+structopt = { version = "0.3.4", default-features = false }
