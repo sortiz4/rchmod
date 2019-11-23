@@ -1,6 +1,6 @@
+use chmodrt::Chmodrt;
 use std::env;
 use std::process;
-use chmodrt::Chmodrt;
 
 fn main() {
     process::exit(run());
