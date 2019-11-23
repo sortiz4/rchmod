@@ -125,14 +125,14 @@ impl Chmodrt {
             return self.version();
         }
 
-        // Check for conflicting options
+        // Validate the options
         self.validate()?;
 
-        // Loop through the paths
+        // Handle the paths
         return self.change();
     }
 
-    /// Checks for conflicts in the options.
+    /// Validates the options.
     fn validate(&self) -> Result<()> {
         return if {
             self.options.interactive && self.options.suppress ||
