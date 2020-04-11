@@ -22,11 +22,11 @@ enum Context {
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Recursively change the mode of files or directories.")]
 struct Options {
-    /// Change the mode of files.
+    /// The mode to use for files.
     #[structopt(short = "f", long = "file")]
     file: Option<String>,
 
-    /// Change the mode of directories.
+    /// The mode to use for directories.
     #[structopt(short = "d", long = "dir")]
     dir: Option<String>,
 
