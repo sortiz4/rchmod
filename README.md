@@ -17,5 +17,4 @@ $ chmodrt -d MODE [PATHS]
 ```
 
 ## Script
-The previous version is available as a shell script, `chmodrt.sh`, and is
-compatible with Windows through Cygwin and other Unix-like environments.
+The previous version, `chmodrt.sh`, is also available.

@@ -1,12 +1,17 @@
 #!/bin/bash
 name="chmodrt"
 
+read -r -d '' help << STRING
+Usage: $name TYPE MODE PATH
+
+Types:
+    -d  Change the mode of directories.
+    -f  Change the mode of files.
+STRING
+
 # Validate the arguments (count only)
 if [ "$#" -lt 3 ]; then
-    printf "Usage: $name TYPE MODE PATH\n\n"
-    printf "Types:\n"
-    printf "    -d  Change the mode of directories\n"
-    printf "    -f  Change the mode of files\n"
+    echo "$help"
     exit 1
 fi
 
