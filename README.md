@@ -17,4 +17,5 @@ $ chmodrt -d MODE [PATHS]
 ```
 
 ## Script
-The previous version, `chmodrt.sh`, is also available.
+A simplified version is also available as a shell script and is compatible with
+other Unix-like environments.
