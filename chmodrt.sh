@@ -1,7 +1,7 @@
 #!/bin/bash
 name="chmodrt"
 
-read -r -d '' help << STRING
+read -r -d "" help << STRING
 Usage: $name TYPE MODE PATH
 
 Types:
