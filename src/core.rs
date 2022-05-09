@@ -111,8 +111,11 @@ impl Rchmod {
                 return self.version();
             }
 
+            // Validate the options
+            self.validate()?;
+
             // Handle the paths
-            return self.validate()?.change();
+            return self.change();
         };
 
         match run() {
@@ -124,21 +127,6 @@ impl Rchmod {
                 return Err(err);
             },
         }
-    }
-
-    /// Validates the options.
-    fn validate(&mut self) -> Result<&mut Self> {
-        return if {
-            self.options.interactive && self.options.suppress
-        } {
-            Err(Error::Conflict)
-        } else if {
-            !self.has_file() && !self.has_dir()
-        } {
-            Err(Error::Missing)
-        } else {
-            Ok(self)
-        };
     }
 
     /// Writes the help message to the standard error stream.
@@ -155,37 +143,19 @@ impl Rchmod {
         return Ok(());
     }
 
-    /// Authorizes directory and file access by prompting the user and reading
-    /// from the standard input stream.
-    fn authorize(&mut self, path: &PathBuf, context: Context) -> Result<bool> {
-        // Determine the appropriate prompt
-        let prompt = match context {
-            Context::Absolute => "is absolute",
-            Context::Interactive => "mode will be changed",
+    /// Validates the options.
+    fn validate(&mut self) -> Result<()> {
+        return if {
+            self.options.interactive && self.options.suppress
+        } {
+            Err(Error::Conflict)
+        } else if {
+            !self.has_file() && !self.has_dir()
+        } {
+            Err(Error::Missing)
+        } else {
+            Ok(())
         };
-
-        let mut input = String::new();
-        loop {
-            // Prompt the user and normalize the input
-            write!(self.stderr, r#""{}" {} - continue? [y/n] "#, path.display(), prompt)?;
-            self.stdin.read_line(&mut input)?;
-
-            // The response must be `y` or `n`
-            match input.trim().to_lowercase().as_str() {
-                "n" => {
-                    if self.options.verbose {
-                        writeln!(self.stderr, "Skipped.")?;
-                    }
-                    return Ok(false);
-                },
-                "y" => {
-                    return Ok(true);
-                },
-                _ => {
-                    input.clear();
-                },
-            }
-        }
     }
 
     /// Changes all paths provided by the user. Authorization may be requested
@@ -283,6 +253,39 @@ impl Rchmod {
         } else {
             Ok(())
         };
+    }
+
+    /// Authorizes directory and file access by prompting the user and reading
+    /// from the standard input stream.
+    fn authorize(&mut self, path: &PathBuf, context: Context) -> Result<bool> {
+        // Determine the appropriate prompt
+        let prompt = match context {
+            Context::Absolute => "is absolute",
+            Context::Interactive => "mode will be changed",
+        };
+
+        let mut input = String::new();
+        loop {
+            // Prompt the user and normalize the input
+            write!(self.stderr, r#""{}" {} - continue? [y/n] "#, path.display(), prompt)?;
+            self.stdin.read_line(&mut input)?;
+
+            // The response must be `y` or `n`
+            match input.trim().to_lowercase().as_str() {
+                "n" => {
+                    if self.options.verbose {
+                        writeln!(self.stderr, "Skipped.")?;
+                    }
+                    return Ok(false);
+                },
+                "y" => {
+                    return Ok(true);
+                },
+                _ => {
+                    input.clear();
+                },
+            }
+        }
     }
 
     /// Determines if the file option is present.
