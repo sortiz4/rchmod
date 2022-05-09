@@ -1,7 +1,7 @@
 # Chmodrt
 Chmodrt is a simple utility that recursively changes the mode of directories or
-files and is only compatible with Unix systems. Numeric modes must be an octal
-between one and four digits. Symbolic modes are not supported.
+files and runs wherever `chmod` is installed. Both numeric and symbolic modes
+are supported.
 
 ## Usage
 Changing files requires the `-f` option.
@@ -16,5 +16,8 @@ Changing directories requires the `-d` option.
 $ chmodrt -d MODE [PATHS]
 ```
 
-## Script
-A simplified version is also available as a shell script.
+Changing both requires the `-f` and `-d` option.
+
+```
+$ chmodrt -f MODE -d MODE [PATHS]
+```

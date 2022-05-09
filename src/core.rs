@@ -1,13 +1,11 @@
 use std::ffi::OsString;
-use std::fs;
-use std::fs::Permissions;
 use std::io;
 use std::io::Stderr;
 use std::io::Stdin;
 use std::io::Stdout;
 use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::process::Command;
 use structopt::StructOpt;
 use super::Error;
 use super::Result;
@@ -22,12 +20,12 @@ enum Context {
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Recursively change the mode of files or directories.")]
 struct Options {
-    /// The mode to use for files.
-    #[structopt(short = "f", long = "file")]
+    /// The mode to apply to files.
+    #[structopt(short = "f", long = "file", name = "file-mode")]
     file: Option<String>,
 
-    /// The mode to use for directories.
-    #[structopt(short = "d", long = "dir")]
+    /// The mode to apply to directories.
+    #[structopt(short = "d", long = "dir", name = "dir-mode")]
     dir: Option<String>,
 
     /// Do not overwrite any files (verbose).
@@ -104,7 +102,20 @@ impl Chmodrt {
 
     /// Runs this program and writes all errors.
     pub fn run(&mut self) -> Result<()> {
-        match self.run_inner() {
+        let mut run = || -> Result<()> {
+            // Write the help or version message
+            if self.options.help {
+                return self.help();
+            }
+            if self.options.version {
+                return self.version();
+            }
+
+            // Handle the paths
+            return self.validate()?.change();
+        };
+
+        match run() {
             Ok(val) => {
                 return Ok(val);
             },
@@ -115,37 +126,18 @@ impl Chmodrt {
         }
     }
 
-    /// Runs this program.
-    fn run_inner(&mut self) -> Result<()> {
-        // Write the help or version message
-        if self.options.help {
-            return self.help();
-        }
-        if self.options.version {
-            return self.version();
-        }
-
-        // Validate the options
-        self.validate()?;
-
-        // Handle the paths
-        return self.change();
-    }
-
     /// Validates the options.
-    fn validate(&self) -> Result<()> {
+    fn validate(&mut self) -> Result<&mut Self> {
         return if {
-            self.options.interactive && self.options.suppress ||
-            self.has_file() && self.has_dir()
+            self.options.interactive && self.options.suppress
         } {
             Err(Error::Conflict)
         } else if {
-            !self.has_file() &&
-            !self.has_dir()
+            !self.has_file() && !self.has_dir()
         } {
             Err(Error::Missing)
         } else {
-            Ok(())
+            Ok(self)
         };
     }
 
@@ -165,7 +157,7 @@ impl Chmodrt {
 
     /// Authorizes directory and file access by prompting the user and reading
     /// from the standard input stream.
-    fn auth(&mut self, path: &PathBuf, context: Context) -> Result<bool> {
+    fn authorize(&mut self, path: &PathBuf, context: Context) -> Result<bool> {
         // Determine the appropriate prompt
         let prompt = match context {
             Context::Absolute => "is absolute",
@@ -199,100 +191,98 @@ impl Chmodrt {
     /// Changes all paths provided by the user. Authorization may be requested
     /// if the `suppress` option is not present.
     fn change(&mut self) -> Result<()> {
-        let mode = u32::from_str_radix(
-            if self.has_file() {
-                self.options.file.as_ref().unwrap()
-            } else if self.has_dir() {
-                self.options.dir.as_ref().unwrap()
-            } else {
-                ""
-            },
-            8,
-        )?;
         for path in self.options.paths.to_owned() {
             if !self.options.suppress && path.has_root() {
                 // Authorize absolute paths (optional)
-                if let Ok(false) = self.auth(&path, Context::Absolute) {
+                if let Ok(false) = self.authorize(&path, Context::Absolute) {
                     continue;
                 }
             }
 
+            // Dig through directories
             if path.is_file() {
-                // The path is a file
-                if self.has_file() {
-                    self.change_one(&path, mode)?;
-                }
-            } else {
-                // Try the path as a directory
-                self.change_many(&path, mode)?;
+                self.change_one(&path)?;
+            } else if path.is_dir() {
+                self.change_many(&path)?;
             }
         }
         return Ok(());
     }
 
     /// Changes all entries under the given directory and writes all errors.
-    fn change_many(&mut self, path: &PathBuf, mode: u32) -> Result<()> {
-        return if let Err(err) = self.change_many_inner(path, mode) {
+    fn change_many(&mut self, path: &PathBuf) -> Result<()> {
+        let mut change_many = || -> Result<()> {
+            // Change the children first
+            for entry in path.read_dir()? {
+                let path = entry?.path();
+
+                // Dig through directories
+                if path.is_file() {
+                    self.change_one(&path)?;
+                } else if path.is_dir() {
+                    self.change_many(&path)?;
+                }
+            }
+
+            // Change the parent last
+            self.change_one(path)?;
+
+            return Ok(());
+        };
+
+        return if let Err(err) = change_many() {
             self.write_error("Cannot access", path, &err)
         } else {
             Ok(())
         };
     }
 
-    /// Changes all entries under the given directory.
-    fn change_many_inner(&mut self, path: &PathBuf, mode: u32) -> Result<()> {
-        if self.has_dir() {
-            self.change_one(path, mode)?;
-        }
-        for entry in path.read_dir()? {
-            let path = entry?.path();
+    /// Changes the mode of the given path and writes all errors. Authorization
+    /// may be requested and additional information may be written if the
+    /// `interactive` and `verbose` options are present. The path will not be
+    /// changed during a `dry-run`.
+    fn change_one(&mut self, path: &PathBuf) -> Result<()> {
+        let mut change_one = || -> Result<()> {
+            if self.options.interactive && !self.options.suppress {
+                // Authorize every path (optional)
+                if let Ok(false) = self.authorize(path, Context::Interactive) {
+                    return Ok(());
+                }
+            }
 
-            // Recurse if the entry is a directory
-            if path.is_file() {
-                if self.has_file() {
-                    self.change_one(&path, mode)?;
+            if !self.options.dry_run {
+                // Change the mode of the path
+                let mode = if path.is_file() && self.has_file() {
+                    self.options.file.as_ref().unwrap().to_owned()
+                } else if path.is_dir() && self.has_dir() {
+                    self.options.dir.as_ref().unwrap().to_owned()
+                } else {
+                    "".to_owned()
+                };
+
+                if mode.len() > 0 {
+                    Command::new("chmod")
+                        .args(&[mode, path.display().to_string()])
+                        .status()
+                        .unwrap();
+
+                    if self.options.verbose {
+                        // Write the results (optional)
+                        self.write_result("changed", path)?;
+                    }
                 }
             } else {
-                self.change_many(&path, mode)?;
+                // Perform a dry run (optional)
+                self.write_result("will be changed", path)?;
             }
-        }
-        return Ok(());
-    }
+            return Ok(());
+        };
 
-    /// Changes the mode of the given path and writes all errors.
-    fn change_one(&mut self, path: &PathBuf, mode: u32) -> Result<()> {
-        return if let Err(err) = self.change_one_inner(path, mode) {
+        return if let Err(err) = change_one() {
             self.write_error("Cannot change permissions", path, &err)
         } else {
             Ok(())
         };
-    }
-
-    /// Changes the mode of the given path. Authorization may be requested and
-    /// additional information may be written if the `interactive` and
-    /// `verbose` options are present. The path will not be changed during a
-    /// `dry-run`.
-    fn change_one_inner(&mut self, path: &PathBuf, mode: u32) -> Result<()> {
-        if self.options.interactive && !self.options.suppress {
-            // Authorize every path (optional)
-            if let Ok(false) = self.auth(path, Context::Interactive) {
-                return Ok(());
-            }
-        }
-
-        if !self.options.dry_run {
-            // Change the mode of the path
-            fs::set_permissions(path, Permissions::from_mode(mode))?;
-
-            if self.options.verbose {
-                // Write the results (optional)
-                self.write_result("changed", path)?;
-            }
-        } else {
-            // Perform a dry run (optional)
-            self.write_result("will be changed", path)?;
-        }
-        return Ok(());
     }
 
     /// Determines if the file option is present.
