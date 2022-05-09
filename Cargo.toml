@@ -1,5 +1,5 @@
 [package]
-name = "chmodrt"
+name = "rchmod"
 edition = "2021"
 version = "4.0.0"
 license = "MIT License"
@@ -9,7 +9,7 @@ authors = ["Steven Ortiz"]
 doc = false
 
 [[bin]]
-name = "chmodrt"
+name = "rchmod"
 doc = false
 
 [dependencies]

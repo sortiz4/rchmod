@@ -57,14 +57,14 @@ struct Options {
     paths: Vec<PathBuf>,
 }
 
-pub struct Chmodrt {
+pub struct Rchmod {
     options: Options,
     stderr: Stderr,
     stdout: Stdout,
     stdin: Stdin,
 }
 
-impl Chmodrt {
+impl Rchmod {
     /// Constructs this program from an iterable of arguments.
     pub fn from_iter<I>(iter: I) -> Result<Self>
     where
