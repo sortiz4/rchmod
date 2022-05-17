@@ -1,6 +1,6 @@
 # Rchmod
-Rchmod is a simple utility that recursively changes the mode of directories or
-files and supports all modes parsable by `chmod`.
+Rchmod is a simple command line tool that recursively changes the mode of
+directories or files and supports all modes parsable by chmod.
 
 ## Usage
 Changing files requires the `-f` option.
