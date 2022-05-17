@@ -5,7 +5,6 @@ use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 use std::io::Error as IoError;
 use std::io::IntoInnerError;
-use std::num::ParseIntError;
 use structopt::clap::Error as ClapError;
 
 #[derive(Debug)]
@@ -14,7 +13,6 @@ pub enum Error {
     Conflict,
     Io(IoError),
     Clap(ClapError),
-    Parse(ParseIntError),
 }
 
 impl StdError for Error {
@@ -30,7 +28,6 @@ impl Display for Error {
             Error::Conflict => write!(fmt, "Conflicting options."),
             Error::Io(err) => write!(fmt, "{}", err),
             Error::Clap(err) => write!(fmt, "{}", err),
-            Error::Parse(err) => write!(fmt, "{}", err),
         };
     }
 }
@@ -50,11 +47,5 @@ impl<W: Debug + Send + 'static> From<IntoInnerError<W>> for Error {
 impl From<ClapError> for Error {
     fn from(err: ClapError) -> Self {
         return Error::Clap(err.into());
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(err: ParseIntError) -> Self {
-        return Error::Parse(err.into());
     }
 }
