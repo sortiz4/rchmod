@@ -12,5 +12,6 @@ fn run() -> i32 {
             return 0;
         }
     }
+
     return 1;
 }

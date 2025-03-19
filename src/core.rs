@@ -1,3 +1,5 @@
+use clap::CommandFactory;
+use clap::Parser;
 use std::ffi::OsString;
 use std::io;
 use std::io::Stderr;
@@ -6,7 +8,6 @@ use std::io::Stdout;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
-use structopt::StructOpt;
 use super::Error;
 use super::Result;
 
@@ -17,43 +18,43 @@ enum Context {
     Interactive,
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Recursively change the mode of files or directories.")]
+#[derive(Debug, Parser)]
+#[command(version, disable_help_flag = true, disable_version_flag = true, about = "Recursively change the mode of files or directories.")]
 struct Options {
     /// The mode to apply to files.
-    #[structopt(short = "f", long = "file", name = "file-mode")]
+    #[arg(short = 'f', long = "file", name = "file-mode")]
     file: Option<String>,
 
     /// The mode to apply to directories.
-    #[structopt(short = "d", long = "dir", name = "dir-mode")]
+    #[arg(short = 'd', long = "dir", name = "dir-mode")]
     dir: Option<String>,
 
     /// Do not overwrite any files (verbose).
-    #[structopt(short = "D", long = "dry-run")]
+    #[arg(short = 'D', long = "dry-run")]
     dry_run: bool,
 
     /// Prompt before overwriting each file.
-    #[structopt(short = "i", long = "interactive")]
+    #[arg(short = 'i', long = "interactive")]
     interactive: bool,
 
     /// Suppress all interaction.
-    #[structopt(short = "s", long = "suppress")]
+    #[arg(short = 's', long = "suppress")]
     suppress: bool,
 
     /// Explain what's being done.
-    #[structopt(short = "V", long = "verbose")]
+    #[arg(short = 'V', long = "verbose")]
     verbose: bool,
 
     /// Show this message.
-    #[structopt(short = "h", long = "help")]
+    #[arg(short = 'h', long = "help")]
     help: bool,
 
     /// Show the version.
-    #[structopt(short = "v", long = "version")]
+    #[arg(short = 'v', long = "version")]
     version: bool,
 
     /// The paths to be modified by this tool.
-    #[structopt(name = "PATHS", parse(from_str))]
+    #[arg(name = "PATHS")]
     paths: Vec<PathBuf>,
 }
 
@@ -74,7 +75,7 @@ impl Rchmod {
     {
         return Ok(
             Self {
-                options: Options::from_iter_safe(iter)?,
+                options: Options::try_parse_from(iter)?,
                 stderr: io::stderr(),
                 stdout: io::stdout(),
                 stdin: io::stdin(),
@@ -107,6 +108,7 @@ impl Rchmod {
             if self.options.help {
                 return self.help();
             }
+
             if self.options.version {
                 return self.version();
             }
@@ -131,15 +133,13 @@ impl Rchmod {
 
     /// Writes the help message to the standard error stream.
     fn help(&mut self) -> Result<()> {
-        Options::clap().write_help(&mut self.stderr)?;
-        writeln!(self.stderr, "")?;
+        write!(self.stderr, "{}", Options::command().render_help())?;
         return Ok(());
     }
 
     /// Writes the version message to the standard error stream.
     fn version(&mut self) -> Result<()> {
-        Options::clap().write_version(&mut self.stderr)?;
-        writeln!(self.stderr, "")?;
+        write!(self.stderr, "{}", Options::command().render_version())?;
         return Ok(());
     }
 
@@ -245,6 +245,7 @@ impl Rchmod {
                 // Perform a dry run (optional)
                 self.write_result("will be changed", path)?;
             }
+
             return Ok(());
         };
 
@@ -265,6 +266,7 @@ impl Rchmod {
         };
 
         let mut input = String::new();
+
         loop {
             // Prompt the user and normalize the input
             write!(self.stderr, r#""{}" {} - continue? [y/n] "#, path.display(), prompt)?;
