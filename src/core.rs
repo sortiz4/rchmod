@@ -278,6 +278,7 @@ impl Rchmod {
                     if self.options.verbose {
                         writeln!(self.stderr, "Skipped.")?;
                     }
+
                     return Ok(false);
                 },
                 "y" => {
