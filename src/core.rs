@@ -145,13 +145,9 @@ impl Rchmod {
 
     /// Validates the options.
     fn validate(&mut self) -> Result<()> {
-        return if {
-            self.options.interactive && self.options.suppress
-        } {
+        return if self.options.interactive && self.options.suppress {
             Err(Error::Conflict)
-        } else if {
-            !self.has_file() && !self.has_dir()
-        } {
+        } else if !self.has_file() && !self.has_dir() {
             Err(Error::Missing)
         } else {
             Ok(())
@@ -176,6 +172,7 @@ impl Rchmod {
                 self.change_many(&path)?;
             }
         }
+
         return Ok(());
     }
 
